@@ -1,0 +1,133 @@
+<html>
+<head>
+    <script>
+
+// (x1, y1) -> (x2, y2)
+// m = (y2 - y1) / (x2 - x1)
+
+        class Point {
+            constructor(x, y, normalized) {
+                this.x = x;
+                this.y = y;
+                this.s = x + ',' + y;
+                this.normalized = normalized;
+            }
+
+            add(that) {
+                return new Point(this.x + that.x, this.y + that.y);
+            }
+
+            subtract(that) {
+                return new Point(this.x - that.x, this.y - that.y);
+            }
+
+            multiply(d) {
+                return new Point(this.x * d, this.y * d);
+            }
+
+            divide(d) {
+                return new Point(this.x / d, this.y / d);
+            }
+
+            weightedAverage(that, w) {
+                const w1 = 1 - w;
+                return new Point(this.x * w + that.x * w1, this.y * w + that.y * w1);
+            }
+
+            average(that) {
+                return this.weightedAverage(that, 0.5);
+            }
+
+            size() {
+                return Math.hypot(this.x, this.y);
+            }
+
+            normalize() {
+                if (this.normalized) return this;
+
+                const s = size();
+                return new Point(this.x / s, this.y / s, true);
+            }
+        }
+
+        function cutPuzzle() {
+            const options = {
+                width: 1500,
+                height: 1125,
+                xPieces: 36,
+                yPieces: 28,
+                maxCornerOffset: 0.1,
+                bumpHeight: 0.2,
+                bumpWidth: 0.2,
+            };
+            const {
+                width,
+                height,
+                xPieces,
+                yPieces,
+                maxCornerOffset,
+                bumpHeight,
+                bumpWidth,
+            } = options;
+            const corners = [];
+            const svg = document.getElementById('output');
+            for (let i = 0; i <= xPieces; i++) {
+                corners[i] = [];
+                for (let j = 0; j <= yPieces; j++) {
+                    const xBase = i * width / xPieces;
+                    const yBase = j * height / yPieces;
+                    const xDiff = i === 0 || i === xPieces ? 0 : (Math.random() * 2 - 1) * maxCornerOffset * width / xPieces;
+                    const yDiff = j === 0 || j === yPieces ? 0 : (Math.random() * 2 - 1) * maxCornerOffset * height / yPieces;
+                    const end = new Point(xBase + xDiff, yBase + yDiff);
+                    corners[i][j] = end;
+                    const starts = [];
+                    if (i > 0 && j > 0) {
+                        if (j < yPieces) starts.push({ start: corners[i - 1][j], vertical: false });
+                        if (i < xPieces) starts.push({ start: corners[i][j - 1], vertical: true  });
+                    }
+                    for (const { start, vertical } of starts) {
+                        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+                        const midWeight = 0.5;
+                        const mid = start.weightedAverage(end, midWeight);
+                        const curveStart = start.weightedAverage(end, midWeight + bumpWidth);
+                        const curveEnd = start.weightedAverage(end, midWeight - bumpWidth);
+                        const diff = end.subtract(start);
+                        const up = new Point(diff.y, -diff.x).multiply((Math.random() < 0.5 ? -bumpHeight : bumpHeight) * (vertical ? width / xPieces : height / yPieces) / diff.size());
+                        const midUp = mid.add(up);
+                        const curveStartUp = curveStart.add(up);
+                        const curveEndUp = curveEnd.add(up);
+                        const startCenter = curveStart.average(midUp);
+                        const endCenter = curveEnd.average(midUp);
+                        const cWeight = 0.5;
+                        const c1 = curveStart.weightedAverage(mid, cWeight);
+                        const c2 = startCenter.weightedAverage(mid, cWeight);
+                        const c3 = startCenter.weightedAverage(curveStartUp, cWeight);
+                        const c4 = midUp.weightedAverage(curveStartUp, cWeight);
+                        const c5 = midUp.weightedAverage(curveEndUp, cWeight);
+                        const c6 = endCenter.weightedAverage(curveEndUp, cWeight);
+                        const c7 = endCenter.weightedAverage(mid, cWeight);
+                        const c8 = curveEnd.weightedAverage(mid, cWeight);
+                        let d = 'M' + start.s;
+                        d += 'L' + curveStart.s;
+                        d += 'C' + c1.s + ' ' + c2.s + ' ' + startCenter.s;
+                        d += ' ' + c3.s + ' ' + c4.s + ' ' + midUp.s;
+                        d += ' ' + c5.s + ' ' + c6.s + ' ' + endCenter.s;
+                        d += ' ' + c7.s + ' ' + c8.s + ' ' + curveEnd.s;
+                        d += 'L' + end.s;
+                        path.setAttribute('d', d);
+                        path.setAttribute('stroke', 'white');
+                        path.setAttribute('fill', 'none');
+                        svg.appendChild(path);
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body>
+    <svg xmlns="http://www.w3.org/2000/svg" id="output" width="1500" height="1125" viewbox="0 0 1500 1125">
+        <image href="sunset.jpg" />
+    </svg>
+    <script>cutPuzzle()</script>
+</body>
+</html>
